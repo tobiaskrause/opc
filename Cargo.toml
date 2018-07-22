@@ -1,5 +1,5 @@
 [package]
-name = "ocp"
+name = "opc"
 version = "0.1.0"
 authors = ["Tobias Krause <tobias.krause@codedsoft.com>"]
 
