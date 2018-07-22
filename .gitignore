@@ -1,3 +1,6 @@
-
+/.idea
+/.vscode
 /target
 **/*.rs.bk
+.vscode/launch.json
+ocp.iml
