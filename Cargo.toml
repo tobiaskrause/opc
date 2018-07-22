@@ -1,0 +1,11 @@
+[package]
+name = "ocp"
+version = "0.1.0"
+authors = ["Tobias Krause <tobias.krause@codedsoft.com>"]
+
+[dependencies]
+winapi = { version = "0.3.x", features = ["objbase", "oleauto", "winerror", "shobjidl", "oaidl"] }
+winrt = { version = "*" }
+
+[build-dependencies]
+winapi-tlb-bindgen = { git = "https://github.com/Arnavion/winapi-tlb-bindgen" }
