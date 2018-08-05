@@ -9,8 +9,6 @@ pub struct ComOPCServer<'a> {
     opc_wrapper: &'a ::gbdaaut::IOPCAutoServer
 }
 
-
-
 impl <'a> ComOPCServer<'a> {
     pub fn new() -> ComOPCServer<'a> {
         unsafe {
@@ -18,6 +16,7 @@ impl <'a> ComOPCServer<'a> {
         }
     }
 }
+
 impl <'a> OPCAutoServer for ComOPCServer<'a> {
     fn init(&mut self) {
         unsafe {
@@ -40,10 +39,11 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
     }
     fn connect(&self, server_name: &str) {
         unsafe {
-                let server: BSTR = *winrt::BStr::from(server_name).get_address();
-                let node: VARIANT = ::std::mem::zeroed();
-                let hr = self.opc_wrapper.Connect(server, node);
-                assert!(winapi::shared::winerror::SUCCEEDED(hr));
+            let server: BSTR = *winrt::BStr::from(server_name).get_address();
+            let node: VARIANT = ::std::mem::zeroed();
+            let hr = self.opc_wrapper.Connect(server, node);
+            println!("Result {}",hr);
+            assert!(winapi::shared::winerror::SUCCEEDED(hr));
         } 
     }
 
@@ -65,5 +65,52 @@ impl <'a> Drop for ComOPCServer<'a> {
         unsafe {
             self.opc_wrapper.Release();
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::ComOPCServer;
+    use opc::backend::OPCAutoServer;
+
+    const SERVICE_NAME: &str = "Graybox.Simulator.1";
+
+    fn get_instance<'a>() -> ComOPCServer<'a> {
+        let mut instance = ComOPCServer::new();
+        instance.init();
+        instance
+    }
+
+    fn connect_with_simulator<'a>() -> ComOPCServer<'a> {
+        let instance = get_instance();
+        instance.connect(SERVICE_NAME);
+        instance
+    }
+
+    #[test]
+    fn connect_disconnect_test() {
+        let instance = connect_with_simulator();
+        instance.disconnect();
+    }
+
+    #[test]
+    fn connect_drop_test() {
+        {
+            let instance = connect_with_simulator();
+        }
+    }
+
+    #[test]
+    fn read_success_test() {
+        let instance = connect_with_simulator();
+        let value = instance.read_value("test1");
+        instance.disconnect();
+    }
+
+    #[test]
+    fn read_error_test() {
+        let instance = connect_with_simulator();
+        let value = instance.read_value("test1");
+        instance.disconnect();
     }
 }

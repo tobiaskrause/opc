@@ -7,6 +7,7 @@ pub mod opc;
 
 use opc::*;
 use opc::backend::*;
+use opc::backend::com::ComOPCServer;
 
 struct MockOPCBackend;
 
@@ -26,8 +27,9 @@ impl OPCAutoServer for MockOPCBackend {
 }
 
 fn main() {
-    let opc_server = OPCServer::new_with(MockOPCBackend{});
-    let connection = opc_server.open("Freelance2000OPCServer.202.1");
+    let opc_server = OPCServer::new();
+    //let connection = opc_server.open("Freelance2000OPCServer.202.1");
+    let connection = opc_server.open("Graybox.Simulator.1");
     println!("{}", connection.read_value("temp12"));
     
 
