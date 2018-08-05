@@ -1,9 +1,12 @@
 
 pub mod com;
+use std::*;
+
+pub type Result<T> = result::Result<T, String>;
 
 pub trait OPCAutoServer {
-    fn init(&mut self);
-    fn connect(&self, server_name: &str);
-    fn read_value(&self, variable_name: &str) -> String;
-    fn disconnect(&self, );
+    fn init(&mut self) -> Result<()>;
+    fn connect(&self, server_name: &str) -> Result<()>;
+    fn read_value(&self, variable_name: &str) -> Result<String>;
+    fn disconnect(&self) -> Result<()>;
 }

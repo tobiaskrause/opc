@@ -7,22 +7,24 @@ pub mod opc;
 
 use opc::*;
 use opc::backend::*;
-use opc::backend::com::ComOPCServer;
 
 struct MockOPCBackend;
 
 impl OPCAutoServer for MockOPCBackend {
-    fn init(&mut self) {
+    fn init(&mut self) -> Result<()>{
+        Ok(())
     }
 
-    fn connect(&self, server_name: &str) {
+    fn connect(&self, server_name: &str) -> Result<()> {
+        Ok(())
     }
 
-    fn read_value(&self, variable_name: &str) -> String {
-        String::from(format!("value of {}", variable_name))
+    fn read_value(&self, variable_name: &str) -> Result<String> {
+        Ok(String::from(format!("value of {}", variable_name)))
     }
     
-    fn disconnect(&self) {
+    fn disconnect(&self) -> Result<()>{
+        Ok(())
     }
 }
 

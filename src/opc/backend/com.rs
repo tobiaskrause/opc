@@ -4,6 +4,7 @@ extern crate winrt;
 use ::backend::*;
 use winapi::um::oaidl::*;
 use winapi::shared::wtypes::BSTR;
+use std::*;
 
 pub struct ComOPCServer<'a> {
     opc_wrapper: &'a ::gbdaaut::IOPCAutoServer
@@ -18,13 +19,16 @@ impl <'a> ComOPCServer<'a> {
 }
 
 impl <'a> OPCAutoServer for ComOPCServer<'a> {
-    fn init(&mut self) {
+    fn init(&mut self) -> Result<()> {
         unsafe {
             let hr = winapi::um::objbase::CoInitialize(::std::ptr::null_mut());
-            assert!(winapi::shared::winerror::SUCCEEDED(hr));
+            if !winapi::shared::winerror::SUCCEEDED(hr)
+            {
+                return Err(format!("CoInitialize failed with {}", hr ));
+            }
 
             let mut opc_wrapper: *mut winapi::ctypes::c_void = ::std::ptr::null_mut();
-            let hr =
+            let hr2 =
                 winapi::um::combaseapi::CoCreateInstance(
                     &::gbdaaut::OPCServer::uuidof(),
                     ::std::ptr::null_mut(),
@@ -32,36 +36,46 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
                     &<::gbdaaut::IOPCAutoServer as winapi::Interface>::uuidof(),
                     &mut opc_wrapper
                 );
-            println!("Result {}",hr);
-            assert!(winapi::shared::winerror::SUCCEEDED(hr));
+            if !winapi::shared::winerror::SUCCEEDED(hr)
+            {
+                return Err(format!("CoCreateInstance failed with {}", hr2 ));
+            }
             self.opc_wrapper = &*(opc_wrapper as *mut ::gbdaaut::IOPCAutoServer);
+            Ok(())
         }
     }
-    fn connect(&self, server_name: &str) {
+    fn connect(&self, server_name: &str) -> Result<()>{
         unsafe {
             let server: BSTR = *winrt::BStr::from(server_name).get_address();
             let node: VARIANT = ::std::mem::zeroed();
             let hr = self.opc_wrapper.Connect(server, node);
-            println!("Result {}",hr);
-            assert!(winapi::shared::winerror::SUCCEEDED(hr));
-        } 
+            if !winapi::shared::winerror::SUCCEEDED(hr)
+            {
+                return Err(format!("CoCreateInstance failed with {}", hr ));
+            }
+        }
+        Ok(()) 
     }
 
-    fn read_value(&self, variable_name: &str) -> String {
-        String::from(format!("value of {}", variable_name))
+    fn read_value(&self, variable_name: &str) -> Result<String> {
+        Ok(String::from(format!("value of {}", variable_name)))
     }
     
-    fn disconnect(&self) {
+    fn disconnect(&self) -> Result<()> {
         unsafe {
             let hr = self.opc_wrapper.Disconnect();
-            assert!(winapi::shared::winerror::SUCCEEDED(hr));
+            if !winapi::shared::winerror::SUCCEEDED(hr)
+            {
+                return Err(format!("CoCreateInstance failed with {}", hr ));
+            }
         }
+        Ok(())
     }
 }
 
 impl <'a> Drop for ComOPCServer<'a> {
     fn drop(&mut self) {
-        self.disconnect();
+        self.disconnect().unwrap();
         unsafe {
             self.opc_wrapper.Release();
         }

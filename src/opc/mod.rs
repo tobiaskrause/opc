@@ -23,26 +23,26 @@ impl <'a> OPCServer<'a> {
 
     pub fn new() -> Box<NotConnected + 'a> {
         let mut opc_backend = ComOPCServer::new();
-        opc_backend.init();
+        opc_backend.init().unwrap();
         OPCServer::new_with(opc_backend)
     }
 }
 
 impl <'a> NotConnected for OPCServer<'a> {
     fn open(&self, server_name: &str) -> Box<&Connected> {
-        self.opc_backend.connect(server_name);
+        self.opc_backend.connect(server_name).unwrap();
         Box::new(self as &Connected)
     }
 }
 
 impl <'a> Connected for OPCServer<'a> {
     fn disconnect(&self) -> Box<&NotConnected> {
-        self.opc_backend.disconnect();
+        self.opc_backend.disconnect().unwrap();
         Box::new(self as &NotConnected)
     }
 
     fn read_value(&self, name: &str) -> String {
-        self.opc_backend.read_value(name)
+        self.opc_backend.read_value(name).unwrap()
     }
 }
 
