@@ -22,6 +22,10 @@ impl OPCAutoServer for MockOPCBackend {
     fn read_value(&self, variable_name: &str) -> Result<String> {
         Ok(String::from(format!("value of {}", variable_name)))
     }
+
+    fn write_value(&self, variable_name: &str, value: &str) -> Result<()> {
+        Ok(())
+    }
     
     fn disconnect(&self) -> Result<()>{
         Ok(())

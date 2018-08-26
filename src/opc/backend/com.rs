@@ -60,6 +60,10 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
     fn read_value(&self, variable_name: &str) -> Result<String> {
         Ok(String::from(format!("value of {}", variable_name)))
     }
+
+    fn write_value(&self, variable_name: &str, value: &str) -> Result<()> {
+        Ok(())
+    }
     
     fn disconnect(&self) -> Result<()> {
         unsafe {
@@ -91,20 +95,20 @@ mod test {
 
     fn get_instance<'a>() -> ComOPCServer<'a> {
         let mut instance = ComOPCServer::new();
-        instance.init();
+        instance.init().unwrap();
         instance
     }
 
     fn connect_with_simulator<'a>() -> ComOPCServer<'a> {
         let instance = get_instance();
-        instance.connect(SERVICE_NAME);
+        instance.connect(SERVICE_NAME).unwrap();
         instance
     }
 
     #[test]
     fn connect_disconnect_test() {
         let instance = connect_with_simulator();
-        instance.disconnect();
+        instance.disconnect().unwrap();
     }
 
     #[test]
@@ -117,14 +121,21 @@ mod test {
     #[test]
     fn read_success_test() {
         let instance = connect_with_simulator();
-        let value = instance.read_value("test1");
-        instance.disconnect();
+        let value = instance.read_value("test1").unwrap();
+        instance.disconnect().unwrap();
     }
 
     #[test]
     fn read_error_test() {
         let instance = connect_with_simulator();
-        let value = instance.read_value("test1");
-        instance.disconnect();
+        let value = instance.read_value("test1").unwrap();
+        instance.disconnect().unwrap();
+    }
+
+    #[test]
+    fn write_success_test() {
+        let instance = connect_with_simulator();
+        instance.write_value("test1", "eins").unwrap();
+        instance.disconnect().unwrap();
     }
 }
