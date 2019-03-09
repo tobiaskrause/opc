@@ -1,11 +1,12 @@
 pub mod backend;
 
-use backend::*;
-use backend::com::*;
+use self::backend::*;
+use self::backend::server::*;
 
 pub trait Connected {
     fn disconnect(&self) -> Box<&NotConnected>;
     fn read_value(&self, name: &str) -> String; 
+    fn list(&self) -> Vec<String>;
 }
 
 pub trait NotConnected {
@@ -43,6 +44,10 @@ impl <'a> Connected for OPCServer<'a> {
 
     fn read_value(&self, name: &str) -> String {
         self.opc_backend.read_value(name).unwrap()
+    }
+
+    fn list(&self) -> Vec<String> {
+        self.opc_backend.list_names().unwrap()
     }
 }
 

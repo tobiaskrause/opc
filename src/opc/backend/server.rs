@@ -1,10 +1,13 @@
+extern crate oaidl;
 extern crate winapi;
 extern crate winrt;
+extern crate widestring;
 
-use ::backend::*;
-use winapi::um::oaidl::*;
-use winapi::shared::wtypes::BSTR;
+use opc::backend::*;
+use self::winapi::um::oaidl::*;
+use self::winapi::shared::wtypes::BSTR;
 use std::*;
+use std::convert::*;
 
 pub struct ComOPCServer<'a> {
     opc_wrapper: &'a ::gbdaaut::IOPCAutoServer
@@ -24,9 +27,8 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
             let hr = winapi::um::objbase::CoInitialize(::std::ptr::null_mut());
             if !winapi::shared::winerror::SUCCEEDED(hr)
             {
-                return Err(format!("CoInitialize failed with {}", hr ));
+                return Err(format!("CoInitialize failed with err={}", hr ));
             }
-
             let mut opc_wrapper: *mut winapi::ctypes::c_void = ::std::ptr::null_mut();
             let hr2 =
                 winapi::um::combaseapi::CoCreateInstance(
@@ -36,9 +38,9 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
                     &<::gbdaaut::IOPCAutoServer as winapi::Interface>::uuidof(),
                     &mut opc_wrapper
                 );
-            if !winapi::shared::winerror::SUCCEEDED(hr)
+            if !winapi::shared::winerror::SUCCEEDED(hr2)
             {
-                return Err(format!("CoCreateInstance failed with {}", hr2 ));
+                return Err(format!("CoCreateInstance failed with err={}", hr2 ));
             }
             self.opc_wrapper = &*(opc_wrapper as *mut ::gbdaaut::IOPCAutoServer);
             Ok(())
@@ -51,7 +53,7 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
             let hr = self.opc_wrapper.Connect(server, node);
             if !winapi::shared::winerror::SUCCEEDED(hr)
             {
-                return Err(format!("CoCreateInstance failed with {}", hr ));
+                return Err(format!("CoCreateInstance failed with err={}", hr ));
             }
         }
         Ok(()) 
@@ -61,7 +63,20 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
         Ok(String::from(format!("value of {}", variable_name)))
     }
 
-    fn write_value(&self, variable_name: &str, value: &str) -> Result<()> {
+    fn list_names(&self) -> Result<Vec<Name>> {
+        let mut opc_browser_ptr: *mut ::gbdaaut::OPCBrowser = ::std::ptr::null_mut();
+        unsafe {
+            let hr = self.opc_wrapper.CreateBrowser(&mut opc_browser_ptr);
+            if !winapi::shared::winerror::SUCCEEDED(hr)
+            {
+                return Err(format!("CreateBrowser failed with err={}", hr ));
+            }
+        }
+        let browser = browser::ComOPCBrowser::new(opc_browser_ptr);
+        Ok(browser.into_iter().collect())
+    }
+
+    fn write_value(&self, _variable_name: &str, _value: &str) -> Result<()> {
         Ok(())
     }
     
@@ -70,7 +85,7 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
             let hr = self.opc_wrapper.Disconnect();
             if !winapi::shared::winerror::SUCCEEDED(hr)
             {
-                return Err(format!("CoCreateInstance failed with {}", hr ));
+                return Err(format!("CoCreateInstance failed with err={}", hr ));
             }
         }
         Ok(())
@@ -88,54 +103,5 @@ impl <'a> Drop for ComOPCServer<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::ComOPCServer;
-    use opc::backend::OPCAutoServer;
-
-    const SERVICE_NAME: &str = "Graybox.Simulator.1";
-
-    fn get_instance<'a>() -> ComOPCServer<'a> {
-        let mut instance = ComOPCServer::new();
-        instance.init().unwrap();
-        instance
-    }
-
-    fn connect_with_simulator<'a>() -> ComOPCServer<'a> {
-        let instance = get_instance();
-        instance.connect(SERVICE_NAME).unwrap();
-        instance
-    }
-
-    #[test]
-    fn connect_disconnect_test() {
-        let instance = connect_with_simulator();
-        instance.disconnect().unwrap();
-    }
-
-    #[test]
-    fn connect_drop_test() {
-        {
-            let instance = connect_with_simulator();
-        }
-    }
-
-    #[test]
-    fn read_success_test() {
-        let instance = connect_with_simulator();
-        let value = instance.read_value("test1").unwrap();
-        instance.disconnect().unwrap();
-    }
-
-    #[test]
-    fn read_error_test() {
-        let instance = connect_with_simulator();
-        let value = instance.read_value("test1").unwrap();
-        instance.disconnect().unwrap();
-    }
-
-    #[test]
-    fn write_success_test() {
-        let instance = connect_with_simulator();
-        instance.write_value("test1", "eins").unwrap();
-        instance.disconnect().unwrap();
-    }
+    // Todo: Add unit tests
 }
