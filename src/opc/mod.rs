@@ -23,8 +23,7 @@ impl <'a> OPCServer<'a> {
     }
 
     pub fn new() -> Box<NotConnected + 'a> {
-        let mut opc_backend = ComOPCServer::new();
-        opc_backend.init().unwrap();
+        let opc_backend = ComOPCServer::try_new().unwrap();
         OPCServer::new_with(opc_backend)
     }
 }

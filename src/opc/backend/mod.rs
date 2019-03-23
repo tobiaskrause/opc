@@ -8,7 +8,6 @@ pub type Result<T> = result::Result<T, String>;
 pub type Name = String;
 
 pub trait OPCAutoServer {
-    fn init(&mut self) -> Result<()>;
     fn connect(&self, server_name: &str) -> Result<()>;
     fn read_value(&self, variable_name: &str) -> Result<String>;
     fn list_names(&self) -> Result<Vec<Name>>;

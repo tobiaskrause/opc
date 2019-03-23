@@ -1,27 +1,28 @@
+#![allow(unstable_name_collisions)]
 extern crate oaidl;
 extern crate winapi;
 extern crate winrt;
 extern crate widestring;
+extern crate try_from;
 
 use opc::backend::*;
+use self::try_from::TryFrom;
 use self::winapi::um::oaidl::*;
 use self::winapi::shared::wtypes::BSTR;
 use std::*;
-use std::convert::*;
 
 pub struct ComOPCServer<'a> {
     opc_wrapper: &'a ::gbdaaut::IOPCAutoServer
 }
 
 impl <'a> ComOPCServer<'a> {
-    pub fn new() -> ComOPCServer<'a> {
+    pub fn try_new() -> Result<ComOPCServer<'a>> {
         unsafe {
-            ComOPCServer{opc_wrapper: &*(::std::ptr::null_mut() as *mut ::gbdaaut::IOPCAutoServer)}
+            let mut this = ComOPCServer{opc_wrapper: &*(::std::ptr::null_mut() as *mut ::gbdaaut::IOPCAutoServer)};
+            this.init().map(|_v| this)
         }
-    }
-}
+    }     
 
-impl <'a> OPCAutoServer for ComOPCServer<'a> {
     fn init(&mut self) -> Result<()> {
         unsafe {
             let hr = winapi::um::objbase::CoInitialize(::std::ptr::null_mut());
@@ -46,6 +47,9 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
             Ok(())
         }
     }
+}
+
+impl <'a> OPCAutoServer for ComOPCServer<'a> {
     fn connect(&self, server_name: &str) -> Result<()>{
         unsafe {
             let server: BSTR = *winrt::BStr::from(server_name).get_address();
@@ -64,15 +68,7 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
     }
 
     fn list_names(&self) -> Result<Vec<Name>> {
-        let mut opc_browser_ptr: *mut ::gbdaaut::OPCBrowser = ::std::ptr::null_mut();
-        unsafe {
-            let hr = self.opc_wrapper.CreateBrowser(&mut opc_browser_ptr);
-            if !winapi::shared::winerror::SUCCEEDED(hr)
-            {
-                return Err(format!("CreateBrowser failed with err={}", hr ));
-            }
-        }
-        let browser = browser::ComOPCBrowser::new(opc_browser_ptr);
+        let browser = browser::ComOPCBrowser::try_from(self.opc_wrapper)?;
         Ok(browser.into_iter().collect())
     }
 

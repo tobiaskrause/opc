@@ -7,8 +7,7 @@ use opc::opc::backend::*;
 const SERVICE_NAME: &str = "Graybox.Simulator.1";
 
 fn get_instance<'a>() -> ComOPCServer<'a> {
-    let mut instance = ComOPCServer::new();
-    instance.init().unwrap();
+    let instance = ComOPCServer::try_new().unwrap();
     instance
 }
 

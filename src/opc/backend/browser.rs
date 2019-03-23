@@ -2,11 +2,13 @@ extern crate oaidl;
 extern crate winapi;
 extern crate winrt;
 extern crate widestring;
+extern crate try_from;
 
 use opc::backend::*;
 use self::winapi::shared::wtypes::BSTR;
 use self::oaidl::*;
 use std::*;
+use self::try_from::*;
 use self::widestring::U16String;
 
 pub struct ItemIterator{
@@ -74,7 +76,7 @@ pub struct ComOPCBrowser {
 }
 
 impl ComOPCBrowser {
-    pub fn new(opc_browser: *mut ::gbdaaut::OPCBrowser) -> ComOPCBrowser {
+    fn new(opc_browser: *mut ::gbdaaut::OPCBrowser) -> ComOPCBrowser {
         unsafe {
             let ref_opc_browser = &*opc_browser;
             ref_opc_browser.MoveToRoot();
@@ -86,11 +88,69 @@ impl ComOPCBrowser {
     }
 }
 
+impl TryFrom<&::gbdaaut::IOPCAutoServer> for ComOPCBrowser {
+    type Err = String;
+
+    fn try_from(item: &::gbdaaut::IOPCAutoServer) -> result::Result<Self, Self::Err> {
+         let mut opc_browser_ptr: *mut ::gbdaaut::OPCBrowser = ::std::ptr::null_mut();
+         unsafe {
+            let hr = item.CreateBrowser(&mut opc_browser_ptr);
+            if !winapi::shared::winerror::SUCCEEDED(hr)
+            {
+                return Err(format!("CreateBrowser failed with err={}", hr ));
+            }
+         }
+       Ok(ComOPCBrowser::new(opc_browser_ptr))
+    }
+}
+
 impl OPCBrowser for ComOPCBrowser {
     fn into_iter(self) -> Box<Iterator<Item = Name>> {
         Box::new(ItemIterator::new(self.opc_browser).unwrap())
     }
 }
+
+
+struct ComOPCGroup {
+    opc_group: *mut ::gbdaaut::IOPCGroup
+}
+
+
+struct ComOPCGroups {
+    opc_groups: *mut ::gbdaaut::IOPCGroups
+}
+
+impl ComOPCGroups {
+    fn new(opc_groups: *mut ::gbdaaut::IOPCGroups) -> ComOPCGroups {
+        ComOPCGroups{opc_groups}
+    }
+
+    pub fn add_group(name: &str ) -> Result<ComOPCGroup> {
+        Ok(ComOPCGroup{opc_group: ::std::ptr::null_mut()})
+    } 
+
+    pub fn remove_group(name: &str ) -> Result<()> {
+        Ok(())
+    }
+
+}
+
+impl TryFrom<&::gbdaaut::IOPCAutoServer> for ComOPCGroups {
+    type Err = String;
+
+    fn try_from(item: &::gbdaaut::IOPCAutoServer) -> result::Result<Self, Self::Err> {
+         let mut opc_group_ptr: *mut ::gbdaaut::OPCGroups = ::std::ptr::null_mut();
+         unsafe {
+            let hr = item.get_OPCGroups((&mut opc_group_ptr) as *mut *mut ::gbdaaut::OPCGroups);
+            if !winapi::shared::winerror::SUCCEEDED(hr)
+            {
+                return Err(format!("get_OPCGroups failed with err={}", hr ));
+            }
+            Ok(ComOPCGroups::new(*(opc_group_ptr as *mut *mut ::gbdaaut::IOPCGroups)))
+         }
+    }
+}
+
 
 #[cfg(test)]
 mod test {
