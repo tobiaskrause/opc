@@ -6,12 +6,10 @@ extern crate try_from;
 
 use opc::backend::*;
 use opc::backend::com::*;
-use self::winapi::shared::wtypes::BSTR;
 use self::oaidl::*;
 use self::winapi::um::oaidl::*;
 use std::*;
 use std::ptr::NonNull;
-use self::try_from::*;
 use self::widestring::U16String;
 use self::winrt::BStr;
 
@@ -122,7 +120,7 @@ impl ComOPCItem {
 
     pub fn get_item_id(&self) -> Result<String> {
         unsafe {
-            let mut id_bstr = BStr::empty();
+            let id_bstr = BStr::empty();
             let hr = self.item().get_ItemID(&mut id_bstr.get());
             if winapi::shared::winerror::SUCCEEDED(hr) {
                 Ok(id_bstr.to_string())

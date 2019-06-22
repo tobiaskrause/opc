@@ -7,12 +7,9 @@ extern crate try_from;
 use opc::backend::*;
 use self::winapi::shared::wtypes::BSTR;
 use self::oaidl::*;
-use self::winapi::um::oaidl::*;
 use std::*;
-use std::ptr::NonNull;
 use self::try_from::*;
 use self::widestring::U16String;
-use self::winrt::BStr;
 
 
 pub struct ItemIdIterator {
