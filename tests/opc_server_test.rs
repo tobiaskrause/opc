@@ -1,7 +1,7 @@
 
 extern crate opc;
 
-use opc::opc::backend::server::*;
+use opc::opc::backend::com::server::*;
 use opc::opc::backend::*;
 
 const SERVICE_NAME: &str = "Graybox.Simulator.1";
@@ -33,21 +33,24 @@ fn connect_drop_test() {
 #[test]
 fn read_success_test() {
     let instance = connect_with_simulator();
-    let _value = instance.read_value("test1").unwrap();
+    let value = instance.read_value("storage.string.reg20").unwrap();
+    println!("Value: {}", value);
     instance.disconnect().unwrap();
 }
 
 #[test]
 fn read_error_test() {
     let instance = connect_with_simulator();
-    let _value = instance.read_value("test1").unwrap();
+   // let _value = instance.read_value("test1").unwrap();
     instance.disconnect().unwrap();
 }
 
 #[test]
 fn write_success_test() {
     let instance = connect_with_simulator();
-    instance.write_value("test1", "eins").unwrap();
+    instance.write_value("storage.string.reg19", "eins").unwrap();
+    let value = instance.read_value("storage.string.reg19").unwrap();
+    println!("Value: {}", value);
     instance.disconnect().unwrap();
 }
 

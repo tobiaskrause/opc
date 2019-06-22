@@ -1,6 +1,6 @@
 
-pub mod server;
-mod browser;
+pub mod com;
+
 use std::*;
 use std::iter::*;
 

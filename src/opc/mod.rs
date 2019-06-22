@@ -1,7 +1,7 @@
 pub mod backend;
 
 use self::backend::*;
-use self::backend::server::*;
+use self::backend::com::server::*;
 
 pub trait Connected {
     fn disconnect(&self) -> Box<&NotConnected>;

@@ -6,9 +6,12 @@ extern crate widestring;
 extern crate try_from;
 
 use opc::backend::*;
-use self::try_from::TryFrom;
+use opc::backend::com::browser::*;
+use opc::backend::com::groups::*;
+use opc::backend::com::items::*;
 use self::winapi::um::oaidl::*;
 use self::winapi::shared::wtypes::BSTR;
+use self::try_from::TryFrom;
 use std::*;
 
 pub struct ComOPCServer<'a> {
@@ -21,7 +24,7 @@ impl <'a> ComOPCServer<'a> {
             let mut this = ComOPCServer{opc_wrapper: &*(::std::ptr::null_mut() as *mut ::gbdaaut::IOPCAutoServer)};
             this.init().map(|_v| this)
         }
-    }     
+    }
 
     fn init(&mut self) -> Result<()> {
         unsafe {
@@ -47,6 +50,22 @@ impl <'a> ComOPCServer<'a> {
             Ok(())
         }
     }
+
+    fn get_group(&self, group_name: &str) -> Result<ComOPCGroup> {
+        let groups = ComOPCGroups::try_from(self.opc_wrapper)?;
+        match groups.find_group(group_name) {
+            None => return groups.add_group(group_name),
+            Some(group) => return Ok(group)
+        }
+    }
+
+    fn get_item(&self, group: &ComOPCGroup, variable_name: &str) -> Result<ComOPCItem> {
+        let items = group.get_items().unwrap();
+        match items.find_item(variable_name) {
+            None => return items.add_item(variable_name),
+            Some(item) => return Ok(item)
+        }
+    }
 }
 
 impl <'a> OPCAutoServer for ComOPCServer<'a> {
@@ -60,22 +79,26 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
                 return Err(format!("CoCreateInstance failed with err={}", hr ));
             }
         }
-        Ok(()) 
+        Ok(())
     }
 
     fn read_value(&self, variable_name: &str) -> Result<String> {
-        Ok(String::from(format!("value of {}", variable_name)))
+        let group = self.get_group("default_reader")?;
+        let item = self.get_item(&group, variable_name)?;
+        item.read()
     }
 
     fn list_names(&self) -> Result<Vec<Name>> {
-        let browser = browser::ComOPCBrowser::try_from(self.opc_wrapper)?;
+        let browser = ComOPCBrowser::try_from(self.opc_wrapper)?;
         Ok(browser.into_iter().collect())
     }
 
-    fn write_value(&self, _variable_name: &str, _value: &str) -> Result<()> {
-        Ok(())
+    fn write_value(&self, variable_name: &str, value: &str) -> Result<()> {
+        let group = self.get_group("default_writer")?;
+        let item = self.get_item(&group, variable_name)?;
+        item.write(value)
     }
-    
+
     fn disconnect(&self) -> Result<()> {
         unsafe {
             let hr = self.opc_wrapper.Disconnect();
