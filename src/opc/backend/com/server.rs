@@ -14,14 +14,19 @@ use self::winapi::shared::wtypes::BSTR;
 use self::try_from::TryFrom;
 use std::*;
 
+#[cfg(test)]
+use super::test::fake as gbdaaut;
+#[cfg(not(test))]
+use ::gbdaaut;
+
 pub struct ComOPCServer<'a> {
-    opc_wrapper: &'a ::gbdaaut::IOPCAutoServer
+    opc_wrapper: &'a gbdaaut::IOPCAutoServer
 }
 
 impl <'a> ComOPCServer<'a> {
     pub fn try_new() -> Result<ComOPCServer<'a>> {
         unsafe {
-            let mut this = ComOPCServer{opc_wrapper: &*(::std::ptr::null_mut() as *mut ::gbdaaut::IOPCAutoServer)};
+            let mut this = ComOPCServer{opc_wrapper: &*(::std::ptr::null_mut() as *mut gbdaaut::IOPCAutoServer)};
             this.init().map(|_v| this)
         }
     }
@@ -36,17 +41,17 @@ impl <'a> ComOPCServer<'a> {
             let mut opc_wrapper: *mut winapi::ctypes::c_void = ::std::ptr::null_mut();
             let hr2 =
                 winapi::um::combaseapi::CoCreateInstance(
-                    &::gbdaaut::OPCServer::uuidof(),
+                    &gbdaaut::OPCServer::uuidof(),
                     ::std::ptr::null_mut(),
                     winapi::um::combaseapi::CLSCTX_ALL,
-                    &<::gbdaaut::IOPCAutoServer as winapi::Interface>::uuidof(),
+                    &<gbdaaut::IOPCAutoServer as winapi::Interface>::uuidof(),
                     &mut opc_wrapper
                 );
             if !winapi::shared::winerror::SUCCEEDED(hr2)
             {
                 return Err(format!("CoCreateInstance failed with err={}", hr2 ));
             }
-            self.opc_wrapper = &*(opc_wrapper as *mut ::gbdaaut::IOPCAutoServer);
+            self.opc_wrapper = &*(opc_wrapper as *mut gbdaaut::IOPCAutoServer);
             Ok(())
         }
     }
@@ -118,9 +123,4 @@ impl <'a> Drop for ComOPCServer<'a> {
             self.opc_wrapper.Release();
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-    // Todo: Add unit tests
 }

@@ -10,16 +10,20 @@ use self::oaidl::*;
 use std::*;
 use self::try_from::*;
 use self::widestring::U16String;
+#[cfg(test)]
+use super::test::fake as gbdaaut;
+#[cfg(not(test))]
+use ::gbdaaut;
 
 
 pub struct ItemIdIterator {
-    opc_browser: *mut ::gbdaaut::OPCBrowser,
+    opc_browser: *mut gbdaaut::OPCBrowser,
     count: i32,
     pos: i32
 }
 
 impl ItemIdIterator {
-    fn new(opc_browser: *mut ::gbdaaut::OPCBrowser) -> Result<ItemIdIterator> {
+    fn new(opc_browser: *mut gbdaaut::OPCBrowser) -> Result<ItemIdIterator> {
         let mut count = 0i32;
         unsafe {
             let ref_opc_browser = &*opc_browser;
@@ -32,7 +36,7 @@ impl ItemIdIterator {
         }
     }
 
-    fn browser(&self) -> &::gbdaaut::OPCBrowser {
+    fn browser(&self) -> &gbdaaut::OPCBrowser {
         unsafe {
             &*self.opc_browser
         }
@@ -73,11 +77,11 @@ impl Drop for ItemIdIterator {
 }
 
 pub struct ComOPCBrowser {
-    opc_browser: *mut ::gbdaaut::OPCBrowser
+    opc_browser: *mut gbdaaut::OPCBrowser
 }
 
 impl ComOPCBrowser {
-    fn new(opc_browser: *mut ::gbdaaut::OPCBrowser) -> ComOPCBrowser {
+    fn new(opc_browser: *mut gbdaaut::OPCBrowser) -> ComOPCBrowser {
         unsafe {
             let ref_opc_browser = &*opc_browser;
             ref_opc_browser.MoveToRoot();
@@ -89,11 +93,11 @@ impl ComOPCBrowser {
     }
 }
 
-impl TryFrom<&::gbdaaut::IOPCAutoServer> for ComOPCBrowser {
+impl TryFrom<&gbdaaut::IOPCAutoServer> for ComOPCBrowser {
     type Err = String;
 
-    fn try_from(item: &::gbdaaut::IOPCAutoServer) -> result::Result<Self, Self::Err> {
-        let mut opc_browser_ptr: *mut ::gbdaaut::OPCBrowser = ::std::ptr::null_mut();
+    fn try_from(item: &gbdaaut::IOPCAutoServer) -> result::Result<Self, Self::Err> {
+        let mut opc_browser_ptr: *mut gbdaaut::OPCBrowser = ::std::ptr::null_mut();
         unsafe {
             let hr = item.CreateBrowser(&mut opc_browser_ptr);
             if !winapi::shared::winerror::SUCCEEDED(hr)
@@ -113,5 +117,11 @@ impl OPCBrowser for ComOPCBrowser {
 
 #[cfg(test)]
 mod test {
-    // Todo: Add unit tests
+
+    use super::ItemIdIterator;
+    #[test]
+    fn test() {
+        let mut fake_browser = super::super::test::fake::OPCBrowser{};
+        ItemIdIterator::new(&mut fake_browser).unwrap();
+    }
 }

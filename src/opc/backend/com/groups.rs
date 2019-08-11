@@ -12,17 +12,22 @@ use self::try_from::*;
 use self::widestring::U16String;
 use self::winrt::BStr;
 
+#[cfg(test)]
+use super::test::fake as gbdaaut;
+#[cfg(not(test))]
+use gbdaaut;
+
 
 pub struct ComOPCGroup {
-    opc_group: *mut ::gbdaaut::IOPCGroup
+    opc_group: *mut gbdaaut::IOPCGroup
 }
 
 impl ComOPCGroup {
-    fn new(opc_group: *mut ::gbdaaut::IOPCGroup) -> ComOPCGroup {
+    fn new(opc_group: *mut gbdaaut::IOPCGroup) -> ComOPCGroup {
         ComOPCGroup{opc_group}
     }
 
-    fn group(&self) -> &::gbdaaut::IOPCGroup {
+    fn group(&self) -> &gbdaaut::IOPCGroup {
         unsafe{
             &*self.opc_group
         }
@@ -41,14 +46,14 @@ impl ComOPCGroup {
     }
 
     pub fn get_items(&self) -> Result<ComOPCItems> {
-        let mut opc_items_ptr: *mut ::gbdaaut::OPCItems = ::std::ptr::null_mut();
+        let mut opc_items_ptr: *mut gbdaaut::OPCItems = ::std::ptr::null_mut();
         unsafe {
-            let hr = self.group().get_OPCItems((&mut opc_items_ptr) as *mut *mut ::gbdaaut::OPCItems);
+            let hr = self.group().get_OPCItems((&mut opc_items_ptr) as *mut *mut gbdaaut::OPCItems);
             if !winapi::shared::winerror::SUCCEEDED(hr)
             {
                 return Err(format!("get_items failed with err={:X}", hr ));
             }
-            Ok(ComOPCItems::new(opc_items_ptr as *mut ::gbdaaut::OPCItems))
+            Ok(ComOPCItems::new(opc_items_ptr as *mut gbdaaut::OPCItems))
         }
     }
 }
@@ -83,14 +88,14 @@ impl <'a> Iterator for GroupIterator <'a> {
 }
 
 pub struct ComOPCGroups {
-    opc_groups: *mut ::gbdaaut::IOPCGroups
+    opc_groups: *mut gbdaaut::IOPCGroups
 }
 
 impl ComOPCGroups {
-    fn new(opc_groups: *mut ::gbdaaut::IOPCGroups) -> ComOPCGroups {
+    fn new(opc_groups: *mut gbdaaut::IOPCGroups) -> ComOPCGroups {
         ComOPCGroups{opc_groups}
     }
-    fn groups(&self) -> &::gbdaaut::IOPCGroups {
+    fn groups(&self) -> &gbdaaut::IOPCGroups {
         unsafe {
             &*self.opc_groups
         }
@@ -111,10 +116,10 @@ impl ComOPCGroups {
     pub fn item(&self, group_id: i32) -> Result<ComOPCGroup> {
         unsafe {
             let group_variant = VariantExt::<i32>::into_variant(group_id).unwrap().as_ptr();
-            let mut opc_group_ptr: *mut ::gbdaaut::OPCGroup = ::std::ptr::null_mut();
+            let mut opc_group_ptr: *mut gbdaaut::OPCGroup = ::std::ptr::null_mut();
             let hr = self.groups().Item(*group_variant, &mut opc_group_ptr);
             if winapi::shared::winerror::SUCCEEDED(hr) {
-                Ok(ComOPCGroup::new(opc_group_ptr as *mut ::gbdaaut::IOPCGroup))
+                Ok(ComOPCGroup::new(opc_group_ptr as *mut gbdaaut::IOPCGroup))
             } else {
                 Err(format!("item from opc_items failed with err={:x}", hr))
             }
@@ -129,10 +134,10 @@ impl ComOPCGroups {
     pub fn add_group(&self, name: &str ) -> Result<ComOPCGroup> {
         unsafe {
             let default= VariantExt::<*mut u16>::into_variant(U16String::from_str(name)).unwrap().as_ptr();
-            let mut opc_group_ptr: *mut ::gbdaaut::OPCGroup= ::std::ptr::null_mut();
+            let mut opc_group_ptr: *mut gbdaaut::OPCGroup= ::std::ptr::null_mut();
             let hr = self.groups().Add(*default, &mut opc_group_ptr);
             if winapi::shared::winerror::SUCCEEDED(hr) {
-                Ok(ComOPCGroup::new(opc_group_ptr as * mut ::gbdaaut::IOPCGroup))
+                Ok(ComOPCGroup::new(opc_group_ptr as * mut gbdaaut::IOPCGroup))
             } else {
                 Err(format!("add_group from opc_groups failed with err={:x}", hr))
             }
@@ -140,18 +145,18 @@ impl ComOPCGroups {
     }
 }
 
-impl TryFrom<&::gbdaaut::IOPCAutoServer> for ComOPCGroups {
+impl TryFrom<&gbdaaut::IOPCAutoServer> for ComOPCGroups {
     type Err = String;
 
-    fn try_from(item: &::gbdaaut::IOPCAutoServer) -> result::Result<Self, Self::Err> {
-        let mut opc_group_ptr: *mut ::gbdaaut::OPCGroups = ::std::ptr::null_mut();
+    fn try_from(item: &gbdaaut::IOPCAutoServer) -> result::Result<Self, Self::Err> {
+        let mut opc_group_ptr: *mut gbdaaut::OPCGroups = ::std::ptr::null_mut();
         unsafe {
-            let hr = item.get_OPCGroups((&mut opc_group_ptr) as *mut *mut ::gbdaaut::OPCGroups);
+            let hr = item.get_OPCGroups((&mut opc_group_ptr) as *mut *mut gbdaaut::OPCGroups);
             if !winapi::shared::winerror::SUCCEEDED(hr)
             {
                 return Err(format!("try_from failed with err={}", hr ));
             }
-            Ok(ComOPCGroups::new(opc_group_ptr as *mut ::gbdaaut::IOPCGroups))
+            Ok(ComOPCGroups::new(opc_group_ptr as *mut gbdaaut::IOPCGroups))
         }
     }
 }

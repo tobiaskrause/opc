@@ -12,6 +12,10 @@ use std::*;
 use std::ptr::NonNull;
 use self::widestring::U16String;
 use self::winrt::BStr;
+#[cfg(test)]
+use super::test::fake as gbdaaut;
+#[cfg(not(test))]
+use gbdaaut;
 
 
 pub struct ItemIterator <'a>{
@@ -45,15 +49,15 @@ impl <'a> Iterator for ItemIterator <'a> {
 
 
 pub struct ComOPCItems {
-    opc_items: *mut ::gbdaaut::OPCItems
+    opc_items: *mut gbdaaut::OPCItems
 }
 
 impl ComOPCItems {
-    pub fn new(opc_items: *mut ::gbdaaut::OPCItems) -> ComOPCItems {
+    pub fn new(opc_items: *mut gbdaaut::OPCItems) -> ComOPCItems {
         ComOPCItems{opc_items}
     }
 
-    fn items(&self) -> &::gbdaaut::OPCItems {
+    fn items(&self) -> &gbdaaut::OPCItems {
         unsafe {
             &*self.opc_items
         }
@@ -74,10 +78,10 @@ impl ComOPCItems {
     pub fn item(&self, item_id: i32) -> Result<ComOPCItem> {
         unsafe {
             let item_variant = VariantExt::<i32>::into_variant(item_id).unwrap().as_ptr();
-            let mut opc_item_ptr: *mut ::gbdaaut::OPCItem = ::std::ptr::null_mut();
+            let mut opc_item_ptr: *mut gbdaaut::OPCItem = ::std::ptr::null_mut();
             let hr = self.items().Item(*item_variant, &mut opc_item_ptr);
             if winapi::shared::winerror::SUCCEEDED(hr) {
-                Ok(ComOPCItem::new(opc_item_ptr as *mut ::gbdaaut::OPCItem))
+                Ok(ComOPCItem::new(opc_item_ptr as *mut gbdaaut::OPCItem))
             } else {
                 Err(format!("find_item from opc_items failed with err={:x}", hr))
             }
@@ -92,10 +96,10 @@ impl ComOPCItems {
     pub fn add_item(&self, item_name: &str) -> Result<ComOPCItem> {
         unsafe {
             let id_bstr = BStr::from(item_name);
-            let mut opc_item_ptr: *mut ::gbdaaut::OPCItem = ::std::ptr::null_mut();
+            let mut opc_item_ptr: *mut gbdaaut::OPCItem = ::std::ptr::null_mut();
             let hr = self.items().AddItem(id_bstr.get(), 0, &mut opc_item_ptr);
             if winapi::shared::winerror::SUCCEEDED(hr) {
-                Ok(ComOPCItem::new(opc_item_ptr as *mut ::gbdaaut::OPCItem))
+                Ok(ComOPCItem::new(opc_item_ptr as *mut gbdaaut::OPCItem))
             } else {
                 Err(format!("add_item from opc_items failed with err={:x}", hr))
             }
@@ -104,15 +108,15 @@ impl ComOPCItems {
 }
 
 pub struct ComOPCItem {
-    opc_item: *mut ::gbdaaut::OPCItem
+    opc_item: *mut gbdaaut::OPCItem
 }
 
 impl ComOPCItem {
-    fn new(opc_item: *mut ::gbdaaut::OPCItem) -> ComOPCItem {
+    fn new(opc_item: *mut gbdaaut::OPCItem) -> ComOPCItem {
         ComOPCItem{opc_item}
     }
 
-    fn item(&self) -> &::gbdaaut::OPCItem {
+    fn item(&self) -> &gbdaaut::OPCItem {
         unsafe {
             &*self.opc_item
         }
