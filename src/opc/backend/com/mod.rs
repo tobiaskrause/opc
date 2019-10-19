@@ -9,15 +9,50 @@ const SOURCE_DEVICE: i16 = 2;
 pub mod test {
     #![allow(non_camel_case_types, non_snake_case, unused, non_upper_case_globals)]
     pub mod fake {
+        extern crate oaidl;
         use winapi::shared::winerror::HRESULT;
         use winapi::shared::wtypes::BSTR;
         use winapi::shared::guiddef::GUID;
-        use winapi::um::oaidl::VARIANT;
+        use winapi::um::oaidl::*;
+        use self::oaidl::*;
 
-        pub struct OPCBrowser;
+
+        use queues::*;
+
+        use std::cell::*;
+
+        const NOT_FOUND: HRESULT = -1;
+
+        #[derive(Clone,Copy)]
+        pub enum OPCBrowserCalls {
+            None,
+            get_count{ exp_Count: *mut i32, result: HRESULT},
+            ShowLeafs{exp_Flat: VARIANT, result: HRESULT},
+            put_Filter{exp_Filter: BSTR, result: HRESULT},
+            MoveToRoot{result: HRESULT},
+            Item{exp_ItemSpecifier: VARIANT, exp_Item: *mut BSTR, result: HRESULT},
+            Release{result: HRESULT}
+        }
+
+        pub struct OPCBrowser {
+            exps: RefCell<Queue<OPCBrowserCalls>>
+        }
+
         impl OPCBrowser {
+
+            pub fn new(exps : RefCell<Queue<OPCBrowserCalls>>) -> OPCBrowser {
+                OPCBrowser{exps}
+            }
+
+            fn next_exp(&self) -> Option<OPCBrowserCalls>  {
+                self.exps.borrow_mut().remove().map(|call| Option::Some(call)).unwrap_or(Option::None)
+            }
             pub unsafe fn get_Count(&self, Count: *mut i32) -> HRESULT {
-                0i32
+                if let Some(OPCBrowserCalls::get_count{exp_Count, result}) = self.next_exp() {
+                    *Count = *exp_Count;
+                    return result
+                }
+                panic!()
             }
 
             pub unsafe fn ShowLeafs(&self, Flat: VARIANT) -> HRESULT {
@@ -33,7 +68,19 @@ pub mod test {
             }
 
             pub unsafe fn Item(&self, ItemSpecifier: VARIANT, Item: *mut BSTR) -> HRESULT {
-                0i32
+                if let Some(OPCBrowserCalls::Item{exp_ItemSpecifier, exp_Item, result}) = self.next_exp() {
+                    let mut copiedItemSpecifier = ItemSpecifier;
+                    let mut copiedexp_ItemSpecifier = exp_ItemSpecifier;
+                    let a: i32 = VariantExt::<i32>::from_variant(Ptr::with_checked(&mut copiedItemSpecifier).unwrap()).unwrap();
+                    let b: i32 = VariantExt::<i32>::from_variant(Ptr::with_checked(&mut copiedexp_ItemSpecifier).unwrap()).unwrap();
+                    if a == b {
+                        *Item = *exp_Item;
+                        return result
+                    } else {
+                        return -1
+                    }
+                }
+                panic!()
             }
 
             pub fn Release(&self) {
@@ -58,7 +105,7 @@ pub mod test {
                 0i32
             }
 
-            pub fn Release(&self) {
+            pub unsafe fn Release(&self) {
             }
         }
 

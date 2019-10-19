@@ -59,5 +59,5 @@ fn list_names_test() {
     let instance = connect_with_simulator();
     let names = instance.list_names().unwrap();
     instance.disconnect().unwrap();
-    assert_eq!(names.len(), 145)
+    assert_eq!(names.len(), 146)
 }
