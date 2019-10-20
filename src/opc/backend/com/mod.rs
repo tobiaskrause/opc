@@ -83,7 +83,7 @@ pub mod test {
                 panic!()
             }
 
-            pub fn Release(&self) {
+            pub unsafe fn Release(&self) {
             }
         }
 
