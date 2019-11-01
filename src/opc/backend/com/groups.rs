@@ -128,7 +128,7 @@ impl ComOPCGroups {
 
     pub fn find_group(&self, name: &str) -> Option<ComOPCGroup> {
         let mut iter = GroupIterator::new(self).unwrap();
-        iter.find(|ref x| x.get_name().unwrap() == name)
+        iter.find(|ref x| x.get_name().unwrap() == String::from(name))
     }
 
     pub fn add_group(&self, name: &str ) -> Result<ComOPCGroup> {
@@ -163,5 +163,33 @@ impl TryFrom<&gbdaaut::IOPCAutoServer> for ComOPCGroups {
 
 #[cfg(test)]
 mod test {
-    // Todo: Add unit tests
+    use super::*;
+    use super::super::test::*;
+    use super::super::test::fake::IOPCGroupsCalls::*;
+
+    use queues::*;
+    use std::cell::*;
+
+    const HRESULT_OK: i32 = 0;
+    const HRESULT_FAIL: i32 = -1;
+
+    #[test]
+    fn test_com_opc_groups() {
+        let mut exp_count: i32 = 1;
+        let mut exps_queue = Queue::<fake::IOPCGroupsCalls>::new();
+        exps_queue.add(get_count{exp_Count: &mut exp_count, result: HRESULT_OK}).unwrap_or_default();
+        unsafe {
+            let exp_group: *mut fake::IOPCGroup = &mut fake::IOPCGroup::new(RefCell::new(Queue::<fake::IOPCGroupCalls>::new()));
+            let item_spec_1 = *(VariantExt::<i32>::into_variant(1i32).unwrap().as_ptr());
+            exps_queue.add(Item {exp_ItemSpecifier:item_spec_1, exp_ppGroup: (exp_group as *mut *mut fake::OPCGroup), result: HRESULT_OK}).unwrap_or_default();
+            let item_spec_2 = *(VariantExt::<i32>::into_variant(2i32).unwrap().as_ptr());
+            exps_queue.add(Item {exp_ItemSpecifier:item_spec_2, exp_ppGroup: (exp_group as *mut *mut fake::OPCGroup), result: HRESULT_FAIL}).unwrap_or_default();
+        }
+        let exps = RefCell::new(exps_queue);
+        let com_opc_groups = ComOPCGroups::new(&mut fake::IOPCGroups::new(exps));
+
+        assert_eq!(com_opc_groups.count(), Ok(exp_count));
+        assert_eq!(com_opc_groups.item(1).is_ok(), true);
+        assert_eq!(com_opc_groups.item(exp_count + 1 ).is_err(), true);
+    }
 }

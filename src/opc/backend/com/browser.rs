@@ -118,13 +118,14 @@ impl OPCBrowser for ComOPCBrowser {
 mod test {
     use super::ItemIdIterator;
     use super::super::test::*;
-
+    use super::super::test::fake::OPCBrowserCalls::*;
     use super::oaidl::*;
+    use super::winrt::BStr;
 
     use queues::*;
     use std::cell::*;
     use std::str::FromStr;
-    use super::winrt::BStr;
+
 
 
     const HRESULT_OK: i32 = 0;
@@ -133,15 +134,15 @@ mod test {
     fn test() {
         let mut exp_count: i32 = 1;
         let mut exps_queue = Queue::<fake::OPCBrowserCalls>::new();
-        exps_queue.add(fake::OPCBrowserCalls::get_count {exp_Count: &mut exp_count, result: HRESULT_OK}).unwrap_or_default();
+        exps_queue.add(get_count{exp_Count: &mut exp_count, result: HRESULT_OK}).unwrap_or_default();
         unsafe {
             let item_spec = *(VariantExt::<i32>::into_variant(1i32).unwrap().as_ptr());
-            exps_queue.add(fake::OPCBrowserCalls::Item {exp_ItemSpecifier:item_spec, exp_Item: BStr::from("A").get_address(), result: HRESULT_OK}).unwrap_or_default();
+            exps_queue.add(Item {exp_ItemSpecifier:item_spec, exp_Item: BStr::from("A").get_address(), result: HRESULT_OK}).unwrap_or_default();
         }
         let exps = RefCell::new(exps_queue);
         let mut fake_browser = fake::OPCBrowser::new(exps);
         let mut iter = ItemIdIterator::new(&mut fake_browser).unwrap();
-        assert_eq!(Some(String::from_str("A").unwrap()), iter.next());
-        assert_eq!(None, iter.next())
+        assert_eq!(iter.next(), Some(String::from_str("A").unwrap()));
+        assert_eq!(iter.next(), Option::None);
     }
 }
