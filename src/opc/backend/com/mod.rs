@@ -8,6 +8,18 @@ const SOURCE_DEVICE: i16 = 2;
 #[cfg(test)]
 pub mod test {
     #![allow(non_camel_case_types, non_snake_case, unused, non_upper_case_globals)]
+    pub mod utils {
+        use queues::*;
+        use std::cell::*;
+
+        pub fn expectations<T: std::clone::Clone>(exps: &[T]) -> RefCell<Queue<T>> {
+            let mut queue = Queue::<T>::new();
+            for exp in exps {
+                queue.add(exp.clone()).unwrap_or_default();
+            }
+            RefCell::new(queue)
+        }
+    }
     pub mod fake {
         extern crate oaidl;
         use winapi::shared::winerror::HRESULT;

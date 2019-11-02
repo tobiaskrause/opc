@@ -123,26 +123,23 @@ mod test {
     use super::winrt::BStr;
 
     use queues::*;
-    use std::cell::*;
     use std::str::FromStr;
-
-
 
     const HRESULT_OK: i32 = 0;
 
     #[test]
     fn test() {
-        let mut exp_count: i32 = 1;
-        let mut exps_queue = Queue::<fake::OPCBrowserCalls>::new();
-        exps_queue.add(get_count{exp_Count: &mut exp_count, result: HRESULT_OK}).unwrap_or_default();
         unsafe {
+            let mut exp_count: i32 = 1;
             let item_spec = *(VariantExt::<i32>::into_variant(1i32).unwrap().as_ptr());
-            exps_queue.add(Item {exp_ItemSpecifier:item_spec, exp_Item: BStr::from("A").get_address(), result: HRESULT_OK}).unwrap_or_default();
+            let exps = utils::expectations::<fake::OPCBrowserCalls>(&[
+                get_count{exp_Count: &mut exp_count, result: HRESULT_OK},
+                Item {exp_ItemSpecifier:item_spec, exp_Item: BStr::from("A").get_address(), result: HRESULT_OK}
+            ]);
+            let mut fake_browser = fake::OPCBrowser::new(exps);
+            let mut iter = ItemIdIterator::new(&mut fake_browser).unwrap();
+            assert_eq!(iter.next(), Some(String::from_str("A").unwrap()));
+            assert_eq!(iter.next(), Option::None);
         }
-        let exps = RefCell::new(exps_queue);
-        let mut fake_browser = fake::OPCBrowser::new(exps);
-        let mut iter = ItemIdIterator::new(&mut fake_browser).unwrap();
-        assert_eq!(iter.next(), Some(String::from_str("A").unwrap()));
-        assert_eq!(iter.next(), Option::None);
     }
 }
