@@ -8,14 +8,18 @@ const SOURCE_DEVICE: i16 = 2;
 #[cfg(test)]
 pub mod test {
     #![allow(non_camel_case_types, non_snake_case, unused, non_upper_case_globals)]
+
+    use opc::backend::com::test::fake::OPCGroup;
+
     pub mod utils {
-        use queues::*;
+        use queue::*;
         use std::cell::*;
 
+        // TODO: rewrite as macro
         pub fn expectations<T: std::clone::Clone>(exps: &[T]) -> RefCell<Queue<T>> {
             let mut queue = Queue::<T>::new();
             for exp in exps {
-                queue.add(exp.clone()).unwrap_or_default();
+                queue.queue(exp.clone()).unwrap();
             }
             RefCell::new(queue)
         }
@@ -28,13 +32,16 @@ pub mod test {
         use winapi::um::oaidl::*;
         use self::oaidl::*;
 
-        use queues::*;
+        use queue::*;
         use std::cell::*;
+        use std::boxed::Box;
+        use winapi::_core::fmt::{Formatter, Error};
+        use winapi::_core::intrinsics::write_bytes;
 
         const NOT_FOUND: HRESULT = -1;
 
-        #[derive(Clone,Copy)]
-        pub enum OPCBrowserCalls {
+        #[derive(Clone)]
+        pub enum  OPCBrowserCalls {
             None,
             get_count{ exp_Count: *mut i32, result: HRESULT},
             ShowLeafs{exp_Flat: VARIANT, result: HRESULT},
@@ -55,7 +62,7 @@ pub mod test {
             }
 
             fn next_exp(&self) -> Option<OPCBrowserCalls>  {
-                self.exps.borrow_mut().remove().map(|call| Option::Some(call)).unwrap_or(Option::None)
+                self.exps.borrow_mut().dequeue().map(|call| Option::Some(call)).unwrap_or(Option::None)
             }
             pub unsafe fn get_Count(&self, Count: *mut i32) -> HRESULT {
                 if let Some(OPCBrowserCalls::get_count{exp_Count, result}) = self.next_exp() {
@@ -125,43 +132,67 @@ pub mod test {
             }
         }
 
-        #[derive(Clone,Copy)]
+        #[derive(Clone)]
         pub enum IOPCGroupsCalls {
             None,
             get_count{ exp_Count: *mut i32, result: HRESULT},
-            Item{exp_ItemSpecifier: VARIANT, exp_ppGroup: *mut *mut OPCGroup, result: HRESULT},
-            Add{exp_ItemSpecifier: VARIANT, exp_ppGroup: *mut *mut OPCGroup, result: HRESULT}
+            Item{exp_ItemSpecifier: VARIANT, exp_ppGroup: Box<OPCGroup>, result: HRESULT},
+            Add{exp_ItemSpecifier: VARIANT, exp_ppGroup: Box<OPCGroup>, result: HRESULT}
         }
 
-        pub struct OPCGroups;
+        impl std::fmt::Debug for IOPCGroupsCalls {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+                match *self {
+                    IOPCGroupsCalls::None => write!(f, "None"),
+                    IOPCGroupsCalls::get_count{exp_Count: _, result: _} => write!(f, "get_count"),
+                    IOPCGroupsCalls::Item{exp_ItemSpecifier: _, exp_ppGroup: _, result: _} => write!(f, "Item"),
+                    IOPCGroupsCalls::Add{exp_ItemSpecifier: _, exp_ppGroup: _, result: _} => write!(f, "Add")
+                }
+            }
+        }
+
+        pub struct OPCGroups{
+            exps: RefCell<Queue<IOPCGroupsCalls>>
+        }
+
+        impl From<IOPCGroups> for OPCGroups {
+            fn from(other: IOPCGroups) -> Self {
+                OPCGroups{exps: other.exps}
+            }
+        }
 
         pub struct IOPCGroups {
             exps: RefCell<Queue<IOPCGroupsCalls>>
         }
+
         impl IOPCGroups {
 
             pub fn new(exps : RefCell<Queue<IOPCGroupsCalls>>) -> IOPCGroups { IOPCGroups{exps} }
 
             fn next_exp(&self) -> Option<IOPCGroupsCalls>  {
-                self.exps.borrow_mut().remove().map(|call| Option::Some(call)).unwrap_or(Option::None)
+                self.exps.borrow_mut().dequeue().map(|call| Option::Some(call)).unwrap_or(Option::None)
             }
 
             pub unsafe fn get_Count(&self, Count: *mut i32) -> HRESULT {
-                if let Some(IOPCGroupsCalls::get_count{exp_Count, result}) = self.next_exp() {
+                let exp = self.next_exp();
+                if let Some(IOPCGroupsCalls::get_count{exp_Count, result}) = exp {
                     *Count = *exp_Count;
                     return result
+                } else {
+                    println!("Exp was {:?}", exp);
+                    panic ! ()
                 }
-                panic ! ()
+
             }
 
             pub unsafe fn Item(&self, ItemSpecifier: VARIANT, ppGroup: *mut *mut OPCGroup) -> HRESULT {
-                if let Some(IOPCGroupsCalls::Item{exp_ItemSpecifier, exp_ppGroup, result}) = self.next_exp() {
+                if let Some(IOPCGroupsCalls::Item{exp_ItemSpecifier, mut exp_ppGroup, result}) = self.next_exp() {
                     let mut copiedItemSpecifier = ItemSpecifier;
                     let mut copiedexp_ItemSpecifier = exp_ItemSpecifier;
                     let a: i32 = VariantExt::<i32>::from_variant(Ptr::with_checked(&mut copiedItemSpecifier).unwrap()).unwrap();
                     let b: i32 = VariantExt::<i32>::from_variant(Ptr::with_checked(&mut copiedexp_ItemSpecifier).unwrap()).unwrap();
                     if a == b {
-                        *ppGroup = *exp_ppGroup;
+                        *ppGroup = &mut *exp_ppGroup;
                         return result
                     } else {
                         return -1
@@ -171,13 +202,13 @@ pub mod test {
             }
 
             pub unsafe fn Add(&self, Name: VARIANT, ppGroup: *mut *mut OPCGroup) -> HRESULT {
-                if let Some(IOPCGroupsCalls::Item{exp_ItemSpecifier, exp_ppGroup, result}) = self.next_exp() {
+                if let Some(IOPCGroupsCalls::Add{exp_ItemSpecifier, mut exp_ppGroup, result}) = self.next_exp() {
                     let mut copiedItemSpecifier = Name;
                     let mut copiedexp_ItemSpecifier = exp_ItemSpecifier;
                     let a: i32 = VariantExt::<i32>::from_variant(Ptr::with_checked(&mut copiedItemSpecifier).unwrap()).unwrap();
                     let b: i32 = VariantExt::<i32>::from_variant(Ptr::with_checked(&mut copiedexp_ItemSpecifier).unwrap()).unwrap();
                     if a == b {
-                        *ppGroup = *exp_ppGroup;
+                        *ppGroup = &mut *exp_ppGroup;
                         return result
                     } else {
                         return -1
@@ -190,13 +221,20 @@ pub mod test {
         #[derive(Clone,Copy)]
         pub enum IOPCGroupCalls {
             None,
-            get_Name{  exp_Name: *mut BSTR, result: HRESULT},
+            get_Name{exp_Name: *mut BSTR, result: HRESULT},
             get_OPCItems{exp_ppItems: *mut *mut OPCItems, result: HRESULT},
         }
 
+        #[derive(Clone)]
+        pub struct OPCGroup {
+            pub exps: RefCell<Queue<IOPCGroupCalls>>
+        }
 
-        pub struct OPCGroup;
-
+        impl From<IOPCGroup> for OPCGroup {
+            fn from(other: IOPCGroup) -> Self {
+                OPCGroup{exps: other.exps}
+            }
+        }
         pub struct IOPCGroup {
             exps: RefCell<Queue<IOPCGroupCalls>>
         }
@@ -208,7 +246,7 @@ pub mod test {
             }
 
             fn next_exp(&self) -> Option<IOPCGroupCalls>  {
-                self.exps.borrow_mut().remove().map(|call| Option::Some(call)).unwrap_or(Option::None)
+                self.exps.borrow_mut().dequeue().map(|call| Option::Some(call)).unwrap_or(Option::None)
             }
 
             pub unsafe fn get_Name(&self, Name: *mut BSTR) -> HRESULT {

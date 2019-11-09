@@ -47,7 +47,7 @@ impl <'a> Iterator for ItemIterator <'a> {
     }
 }
 
-
+#[derive(Debug)]
 pub struct ComOPCItems {
     opc_items: *mut gbdaaut::OPCItems
 }

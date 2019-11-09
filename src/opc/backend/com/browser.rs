@@ -122,19 +122,20 @@ mod test {
     use super::oaidl::*;
     use super::winrt::BStr;
 
-    use queues::*;
     use std::str::FromStr;
 
     const HRESULT_OK: i32 = 0;
+
 
     #[test]
     fn test() {
         unsafe {
             let mut exp_count: i32 = 1;
             let item_spec = *(VariantExt::<i32>::into_variant(1i32).unwrap().as_ptr());
+            let mut item_bstr = BStr::from("A");
             let exps = utils::expectations::<fake::OPCBrowserCalls>(&[
                 get_count{exp_Count: &mut exp_count, result: HRESULT_OK},
-                Item {exp_ItemSpecifier:item_spec, exp_Item: BStr::from("A").get_address(), result: HRESULT_OK}
+                Item {exp_ItemSpecifier: item_spec, exp_Item: item_bstr.get_address(), result: HRESULT_OK}
             ]);
             let mut fake_browser = fake::OPCBrowser::new(exps);
             let mut iter = ItemIdIterator::new(&mut fake_browser).unwrap();
@@ -142,4 +143,5 @@ mod test {
             assert_eq!(iter.next(), Option::None);
         }
     }
+
 }
