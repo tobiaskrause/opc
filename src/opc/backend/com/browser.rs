@@ -109,7 +109,7 @@ impl TryFrom<&gbdaaut::IOPCAutoServer> for ComOPCBrowser {
 }
 
 impl OPCBrowser for ComOPCBrowser {
-    fn into_iter(self) -> Box<Iterator<Item = Name>> {
+    fn into_iter(self) -> Box<dyn Iterator<Item = Name>> {
         Box::new(ItemIdIterator::new(self.opc_browser).unwrap())
     }
 }

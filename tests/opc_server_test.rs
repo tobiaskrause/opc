@@ -6,12 +6,12 @@ use opc::opc::backend::*;
 
 const SERVICE_NAME: &str = "Graybox.Simulator.1";
 
-fn get_instance<'a>() -> ComOPCServer<'a> {
+fn get_instance() -> ComOPCServer {
     let instance = ComOPCServer::try_new().unwrap();
     instance
 }
 
-fn connect_with_simulator<'a>() -> ComOPCServer<'a> {
+fn connect_with_simulator() -> ComOPCServer {
     let instance = get_instance();
     instance.connect(SERVICE_NAME).unwrap();
     instance

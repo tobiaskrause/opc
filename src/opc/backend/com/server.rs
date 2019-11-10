@@ -19,16 +19,14 @@ use super::test::fake as gbdaaut;
 #[cfg(not(test))]
 use ::gbdaaut;
 
-pub struct ComOPCServer<'a> {
-    opc_wrapper: &'a gbdaaut::IOPCAutoServer
+pub struct ComOPCServer {
+    opc_wrapper: *mut gbdaaut::IOPCAutoServer
 }
 
-impl <'a> ComOPCServer<'a> {
-    pub fn try_new() -> Result<ComOPCServer<'a>> {
-        unsafe {
-            let mut this = ComOPCServer{opc_wrapper: &*(::std::ptr::null_mut() as *mut gbdaaut::IOPCAutoServer)};
-            this.init().map(|_v| this)
-        }
+impl ComOPCServer {
+    pub fn try_new() -> Result<ComOPCServer> {
+        let mut this = ComOPCServer{opc_wrapper: (::std::ptr::null_mut() as *mut gbdaaut::IOPCAutoServer)};
+        this.init().map(|_v| this)
     }
 
     fn init(&mut self) -> Result<()> {
@@ -51,13 +49,13 @@ impl <'a> ComOPCServer<'a> {
             {
                 return Err(format!("CoCreateInstance failed with err={}", hr2 ));
             }
-            self.opc_wrapper = &*(opc_wrapper as *mut gbdaaut::IOPCAutoServer);
+            self.opc_wrapper = opc_wrapper as *mut gbdaaut::IOPCAutoServer;
             Ok(())
         }
     }
 
     fn get_group(&self, group_name: &str) -> Result<ComOPCGroup> {
-        let groups = ComOPCGroups::try_from(self.opc_wrapper)?;
+        let groups = ComOPCGroups::try_from(self.opc_wrapper())?;
         match groups.find_group(group_name) {
             None => return groups.add_group(group_name),
             Some(group) => return Ok(group)
@@ -71,14 +69,23 @@ impl <'a> ComOPCServer<'a> {
             Some(item) => return Ok(item)
         }
     }
+
+    fn opc_wrapper(&self) -> &gbdaaut::IOPCAutoServer {
+        unsafe {
+            match self.opc_wrapper.as_ref() {
+                Some(p) => return p,
+                None => panic!("Tried to dereference NULL pointer")
+            }
+        }
+    }
 }
 
-impl <'a> OPCAutoServer for ComOPCServer<'a> {
+impl OPCAutoServer for ComOPCServer {
     fn connect(&self, server_name: &str) -> Result<()>{
         unsafe {
             let server: BSTR = *winrt::BStr::from(server_name).get_address();
             let node: VARIANT = ::std::mem::zeroed();
-            let hr = self.opc_wrapper.Connect(server, node);
+            let hr = self.opc_wrapper().Connect(server, node);
             if !winapi::shared::winerror::SUCCEEDED(hr)
             {
                 return Err(format!("CoCreateInstance failed with err={}", hr ));
@@ -94,7 +101,7 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
     }
 
     fn list_names(&self) -> Result<Vec<Name>> {
-        let browser = ComOPCBrowser::try_from(self.opc_wrapper)?;
+        let browser = ComOPCBrowser::try_from(self.opc_wrapper())?;
         Ok(browser.into_iter().collect())
     }
 
@@ -106,7 +113,7 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
 
     fn disconnect(&self) -> Result<()> {
         unsafe {
-            let hr = self.opc_wrapper.Disconnect();
+            let hr = self.opc_wrapper().Disconnect();
             if !winapi::shared::winerror::SUCCEEDED(hr)
             {
                 return Err(format!("CoCreateInstance failed with err={}", hr ));
@@ -116,11 +123,13 @@ impl <'a> OPCAutoServer for ComOPCServer<'a> {
     }
 }
 
-impl <'a> Drop for ComOPCServer<'a> {
+impl Drop for ComOPCServer {
     fn drop(&mut self) {
-        self.disconnect().unwrap();
-        unsafe {
-            self.opc_wrapper.Release();
+        if !self.opc_wrapper.is_null() {
+            self.disconnect().unwrap();
+            unsafe {
+                self.opc_wrapper().Release();
+            }
         }
     }
 }

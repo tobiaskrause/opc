@@ -4,41 +4,41 @@ use self::backend::*;
 use self::backend::com::server::*;
 
 pub trait Connected {
-    fn disconnect(&self) -> Box<&NotConnected>;
+    fn disconnect(&self) -> &dyn NotConnected;
     fn read_value(&self, name: &str) -> String; 
     fn list(&self) -> Vec<String>;
 }
 
 pub trait NotConnected {
-    fn open(&self, server_name: &str) -> Box<&Connected>;
+    fn open(&self, server_name: &str) -> &dyn Connected;
 }
 
-pub struct OPCServer<'a> {
-    opc_backend: Box<OPCAutoServer + 'a>
+pub struct OPCServer {
+    opc_backend: Box<dyn OPCAutoServer>
 }
 
-impl <'a> OPCServer<'a> {
-    pub fn new_with<T: OPCAutoServer + 'a>(opc_backend: T) -> Box<NotConnected + 'a> {
-        Box::new(OPCServer{opc_backend: Box::new(opc_backend)})
+impl OPCServer {
+    pub fn new_with(opc_backend: Box<dyn OPCAutoServer>) -> Box<dyn NotConnected> {
+        Box::new(OPCServer{opc_backend})
     }
 
-    pub fn new() -> Box<NotConnected + 'a> {
-        let opc_backend = ComOPCServer::try_new().unwrap();
+    pub fn new() -> Box<dyn NotConnected> {
+        let opc_backend: Box<dyn OPCAutoServer> = Box::new(ComOPCServer::try_new().unwrap());
         OPCServer::new_with(opc_backend)
     }
 }
 
-impl <'a> NotConnected for OPCServer<'a> {
-    fn open(&self, server_name: &str) -> Box<&Connected> {
+impl NotConnected for OPCServer {
+    fn open(&self, server_name: &str) -> &dyn Connected {
         self.opc_backend.connect(server_name).unwrap();
-        Box::new(self as &Connected)
+        self
     }
 }
 
-impl <'a> Connected for OPCServer<'a> {
-    fn disconnect(&self) -> Box<&NotConnected> {
+impl Connected for OPCServer {
+    fn disconnect(&self) -> &dyn NotConnected {
         self.opc_backend.disconnect().unwrap();
-        Box::new(self as &NotConnected)
+        self
     }
 
     fn read_value(&self, name: &str) -> String {
@@ -50,7 +50,7 @@ impl <'a> Connected for OPCServer<'a> {
     }
 }
 
-impl <'a> Drop for OPCServer<'a> {
+impl Drop for OPCServer {
     fn drop(& mut self) {
     }
 }
