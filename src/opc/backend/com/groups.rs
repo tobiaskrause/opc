@@ -73,16 +73,14 @@ impl <'a> GroupIterator <'a> {
 impl <'a> Iterator for GroupIterator <'a> {
     type Item = ComOPCGroup;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.pos < self.count {
-            self.pos += 1;
+        let mut ret_value = None;
+        if self.pos <= self.count {
             if let Ok(item) = self.opc_groups.item(self.pos.clone()) {
-                return Some(item);
-            } else {
-                return None;
+                ret_value =  Some(item);
             }
-        } else {
-            None
         }
+        self.pos += 1;
+        return ret_value
     }
 }
 
@@ -208,6 +206,25 @@ mod test {
         let com_opc_group = ComOPCGroup::new(&mut fake::IOPCGroup::new(exps));
         assert_eq!(com_opc_group.get_name(), Ok(String::from("abc")));
         assert_eq!(com_opc_group.get_items().is_ok(), true);
+    }
+
+    #[test]
+    fn test_com_opc_group_iterator() {
+        use super::super::test::fake::IOPCGroupsCalls::*;
+        unsafe {
+            let mut exp_count: i32 = 1;
+            let exp_group_1 = fake::OPCGroup { exps: RefCell::new(Queue::<fake::IOPCGroupCalls>::new()) };
+            let item_spec_1 = *(VariantExt::<i32>::into_variant(1i32).unwrap().as_ptr());
+            let exps = utils::expectations::<fake::IOPCGroupsCalls>(&[
+                get_count { exp_Count: &mut exp_count, result: HRESULT_OK },
+                Item { exp_ItemSpecifier: item_spec_1, exp_ppGroup: Box::new(exp_group_1), result: HRESULT_OK }
+            ]);
+            let com_opc_groups = ComOPCGroups::new(&mut fake::IOPCGroups::new(exps));
+            let mut iter = GroupIterator::new(&com_opc_groups).unwrap();
+
+            assert_eq!(iter.next().is_some(), true);
+            assert_eq!(iter.next().is_none(), true);
+        }
     }
 
 }
